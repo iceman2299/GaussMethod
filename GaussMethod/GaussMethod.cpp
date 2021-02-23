@@ -2,6 +2,7 @@
 #include <clocale>
 #include <iomanip>
 #include <algorithm>
+#include <cmath>
 using namespace std;
 
 
@@ -77,31 +78,68 @@ void xoutputS(double* x)
 	}
 }
 
-//Функция прямого хода метода гаусса
-int strway(double** a)
+//Функция обмена строк матрицы
+int strchange(double** a, double** b, int nulstr, int nowcol)
 {
-	double koef=1;
+	double* buf;
+	int colzn = col + 1;
+	buf = new double[colzn];
+	for (int j = nulstr + 1; j < row; j++)
+	{
+		if (a[nowcol][j] != 0)
+		{
+			for (int i = 0; i < colzn; i++)
+			{
+				buf[i] = a[i][nulstr];
+				a[i][nulstr] = a[i][j];
+				a[i][j] = buf[i];
+				//cout << i << " й член " << j << " Строки " << "Сменен с " << a[i][j] << " На " << a[i][nulstr] << endl;//(отладочная опция)
+			}
+			return 0;
+		}
+	}
+	return 5;
+}
+
+//Функция прямого хода метода гаусса
+int strway(double** a, double** b)
+{
+	double koef=0;
 	int k = min(col, row);
 	for (int j = 0; j < k; j++)
 	{
-		koef = a[j][j];//Коэффициент деления строки
-		for (int i = 0; i < col+1; i++)
+		if (a[j][j] == 0)
 		{
-			if (a[j][j] != 0)
+			if (j < row - 1)
 			{
-				a[i][j] = (a[i][j] / koef) + 0.0;
+				int kod = strchange(a, b, j, j);
+				if (kod == 5)
+				{
+					return 5;
+				}
 			}
-			else
+			if (j >= row - 1)
 			{
 				return 1;
 			}
 		}
-		for (int l = j + 1; l < row; l++)
+		if (a[j][j] != 0)
 		{
-			double koef2 = a[j][l];//Коэффициент вычитания строки из нижних для неё
-			for (int m = 0; m < col+1; m++)
+			koef = a[j][j];//Коэффициент деления строки
+			for (int i = 0; i < col + 1; i++)
 			{
-				a[m][l] = (a[m][l] - (a[m][j] * koef2));
+				{
+					
+					a[i][j] = (a[i][j] / koef) + 0.0;
+				}
+			}
+			for (int l = j + 1; l < row; l++)
+			{
+				double koef2 = a[j][l];//Коэффициент вычитания строки из нижних для неё
+				for (int m = 0; m < col + 1; m++)
+				{
+					a[m][l] = (a[m][l] - (a[m][j] * koef2));
+				}
 			}
 		}
 	}
@@ -129,8 +167,9 @@ int bckway(double* x, double** b)
 		{
 			bufsum = bufsum + (x[i] * b[i][j]);
 		}
-		//if (fabs(bufsum - b[col][j]) > 0.001)
-		if (bufsum - b[col][j] != 0)
+		//cout << "Сумма " << j << " Равна " << bufsum << endl;
+		//cout << "Буфер " << j << " Равен " << b[col][j] << endl; //(отладочные опции)
+		if (fabs(bufsum - b[col][j]) > 0.001)
 		{
 			return 4;
 		}
@@ -155,38 +194,22 @@ double** matrixcpy(double** a)
 //Функция проверки на несовместность и параметричность
 int checkreal(double** a)
 {
-	if (col > row)
-	{
 		for (int j = 0; j < row; j++)
 		{
+			double checkingsum = 0;
 			for (int i = 0; i < col; i++)
 			{
-				if (i != j && a[i][j] != 0 && a[col][j]!=0)
-				{
-					return 2;
-				}
+				checkingsum = fabs(checkingsum) + fabs(a[i][j]);
 			}
-		}
-	}
-	if (row > col)
-	{
-		for (int j = 0; j < row; j++)
-		{
-			for (int i = 0; i < col; i++)
+			if (checkingsum == 0 && a[col][j] != 0)
 			{
-				double checkingsum = 0;
-				if (i != j)
-				{
-					checkingsum = checkingsum + a[i][j];
-					if (checkingsum == 0 && a[i][j] == 0 && a[col][j] != 0)
-					{
-						return 3;
-					}
-				}
-				
+				return 3;
+			}
+			if (checkingsum > 1)
+			{
+				return 2;
 			}
 		}
-	}
 	return 0;
 }
 
@@ -204,50 +227,63 @@ int main()
 	cout << "\x1b[1;32mВведите количество строк матрицы коэффициентов\x1b[0m\n";
 	cin >> row;
 	double** a = matrix();
-	inputK(a);//Заполняем матрицу числами
-	double** b = matrixcpy(a);//Копия оригинальной матрицы, потом пригодится
+	inputK(a);
+	double** b = matrixcpy(a);//Копия оригинальной матрицы, потом пригодится для сравнения значений
 	system("cls");
 	cout << "Исходная матрица:\n";
-	moutputS(a);
-	int kod = strway(a);
-	if (kod == 1)
+	moutputS(a); //Рисуем оригинальную матрицу на экране
+	int kod = strway(a,b); //Прямой ход с кодами ошибок
+	switch (kod)
+	{
+	case 1:
 	{
 		system("cls");
-		cerr << "Во время преобразований на главной диагонали найден ноль, я такого не умею.\n";
+		cerr << "\x1b[1;31mОшибка. Во время преобразований образовалась последняя строка с нулем по главной диагонали.\nСовет: поменяйте первую и последнюю строки в исходной матрице вручную и попробуйте еще раз.\n\x1b[1;0m";
 		return 1;
 	}
-	cout << "Итоговая матрица после преобразований:\n";
-	moutputS(a);
-	double* x = xses();
-	importX(a, x);
-	kod = checkreal(a);
+	case 5:
+	{
+		system("cls");
+		cerr << "\x1b[1;31mОшибка. Во время преобразований нашлась несменяемая строка с нулем по главной диагонали.\n Совет: поменяйте первую и последнюю строки в исходной матрице вручную и попробуйте еще раз.\n\x1b[1;0m";
+		return 5;
+	}
+	}
+	cout << "\x1b[1;32mИтоговая матрица после преобразований:\n\x1b[1;0m";
+	moutputS(a); //Рисуем итоговую матрицу на экране
+	double* x = xses(); //Память под найденные значения
+	importX(a, x); //Запись значений
+	kod = checkreal(a);//Проверка возможности существования системы с кодами
 	switch (kod)
 	{
 	case 2:
 	{
-		cerr << "Неизвестные данной системы задаются параметрически, считай сам.\n";
+		cerr << "\x1b[1;36mНеизвестные данной системы задаются параметрически, решений великое множество.\n\x1b[1;0m";
 		return 0;
 	}
 	case 3:
 	{
-		cerr << "Система несовместна.\n";
+		cerr << "\x1b[1;36mСистема несовместна.\n\x1b[1;0m";
 		return 0;
 	}
 	}
-
-	free(a);
+	free(a);//Больше не понадобится измененный оригинал
 	kod = bckway(x, b);
 	switch (kod)
 	{
 	case 4:
 	{
-		cerr << "Ошибка вычисления программы.\n";
+		cerr << "\x1b[1;31mОшибка вычисления программы. Очень большая погрешность. \nВозможно неизвестные очень большие, либо не могут быть записаны десятичной дробью.\n\x1b[1;0m";
 		return 0;
 	}
 	case 0:
 	{
-		cout << "Неизвестные данной системы уравнений равны:\n";
+		cout << "\x1b[1;36mНеизвестные данной системы уравнений равны:\n\x1b[1;0m";
 		xoutputS(x);
 	}
 	}
+	free(b);
+	free(x);
+	cout << "\x1b[1;36mНажмите любую клавишу чтобы выйти...\x1b[1;0m";
+	cin.get();
+	return 0;
 }//Конец программы
